@@ -16,20 +16,47 @@ HEADERS = {
     "Notion-Version": "2022-06-28",
 }
 
-NOTION_LANG_MAP = {
+NOTION_SUPPORTED_LANGS = {
+    "abap", "arduino", "bash", "basic", "c", "clojure", "coffeescript", "c++",
+    "c#", "css", "dart", "diff", "docker", "elixir", "elm", "erlang", "flow",
+    "fortran", "f#", "gherkin", "glsl", "go", "graphql", "groovy", "haskell",
+    "html", "java", "javascript", "json", "julia", "kotlin", "latex", "less",
+    "lisp", "livescript", "lua", "makefile", "markdown", "markup", "matlab",
+    "mermaid", "nix", "objective-c", "ocaml", "pascal", "perl", "php",
+    "plain text", "powershell", "prolog", "protobuf", "python", "r", "reason",
+    "ruby", "rust", "sass", "scala", "scheme", "scss", "shell", "sql", "swift",
+    "typescript", "vb.net", "verilog", "vhdl", "visual basic", "webassembly",
+    "xml", "yaml", "java/c/c++/c#", "notranslate",
+}
+
+NOTION_LANG_ALIAS = {
     "js": "javascript",
     "ts": "typescript",
     "py": "python",
     "sh": "shell",
-    "bash": "shell",
     "yml": "yaml",
-    "yaml": "yaml",
-    "json": "json",
-    "sql": "sql",
-    "html": "html",
-    "css": "css",
-    "": "plain text",
+    "dockerfile": "docker",
+    "rb": "ruby",
+    "rs": "rust",
+    "cs": "c#",
+    "cpp": "c++",
+    "objc": "objective-c",
+    "tex": "latex",
+    "md": "markdown",
+    "ps1": "powershell",
+    "xml": "xml",
 }
+
+
+def resolve_lang(lang_raw):
+    lang_raw = lang_raw.strip().lower()
+    if not lang_raw:
+        return "plain text"
+    if lang_raw in NOTION_SUPPORTED_LANGS:
+        return lang_raw
+    if lang_raw in NOTION_LANG_ALIAS:
+        return NOTION_LANG_ALIAS[lang_raw]
+    return "plain text"
 
 CODE_BLOCK_MAX_CHARS = 2000
 
@@ -133,7 +160,7 @@ def markdown_to_blocks(md_text):
         # Code block
         if line.strip().startswith("```"):
             lang_raw = line.strip()[3:].strip()
-            lang = NOTION_LANG_MAP.get(lang_raw, lang_raw if lang_raw else "plain text")
+            lang = resolve_lang(lang_raw)
             code_lines = []
             i += 1
             while i < len(lines) and not lines[i].strip().startswith("```"):
@@ -232,7 +259,10 @@ def append_blocks(page_id, blocks):
     for start in range(0, len(blocks), 100):
         chunk = blocks[start:start + 100]
         resp = requests.patch(url, headers=HEADERS, json={"children": chunk})
-        resp.raise_for_status()
+        if not resp.ok:
+            print(f"Error appending blocks {start}-{start+len(chunk)}: {resp.status_code}")
+            print(resp.text)
+            resp.raise_for_status()
 
 
 def main():
