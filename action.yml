@@ -1,0 +1,38 @@
+name: 'Sync README to Notion'
+description: 'Syncs README.md to a Notion page, resolved from a Notion DB by GitHub repository name'
+
+inputs:
+  notion_token:
+    description: 'Notion Integration Token'
+    required: true
+  notion_db_id:
+    description: 'Notion Database ID that maps GitHub repo names to pages'
+    required: true
+  readme_path:
+    description: 'Path to README.md (default: README.md)'
+    required: false
+    default: 'README.md'
+  github_repository:
+    description: 'GitHub repository (owner/repo format, e.g. your-org/repo-name)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      shell: bash
+      run: pip install -r ${{ github.action_path }}/requirements.txt
+
+    - name: Sync to Notion
+      shell: bash
+      env:
+        NOTION_TOKEN: ${{ inputs.notion_token }}
+        NOTION_DB_ID: ${{ inputs.notion_db_id }}
+        README_PATH: ${{ inputs.readme_path }}
+        GITHUB_REPOSITORY_NAME: ${{ inputs.github_repository }}
+      run: python ${{ github.action_path }}/sync_to_notion.py
