@@ -214,6 +214,15 @@ def markdown_to_blocks(md_text):
             i += 1
             continue
 
+        # Table
+        if re.match(r"^\|.+\|$", stripped):
+            table_lines = []
+            while i < len(lines) and re.match(r"^\|.+\|$", lines[i].strip()):
+                table_lines.append(lines[i].strip())
+                i += 1
+            blocks.append(_table_block(table_lines))
+            continue
+
         # Bulleted list
         if re.match(r"^[-*] ", stripped):
             blocks.append({
@@ -244,6 +253,47 @@ def markdown_to_blocks(md_text):
         i += 1
 
     return blocks
+
+
+def _table_block(table_lines):
+    """Convert markdown table lines to a Notion table block."""
+    # Parse rows, skip separator line (e.g. |---|---|)
+    rows = []
+    for line in table_lines:
+        if re.match(r"^\|[\s\-:]+\|$", line):
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        rows.append(cells)
+
+    if not rows:
+        return {"object": "block", "type": "paragraph", "paragraph": {"rich_text": [_plain("")]}}
+
+    col_count = max(len(row) for row in rows)
+    # Pad rows to have equal columns
+    for row in rows:
+        while len(row) < col_count:
+            row.append("")
+
+    table_rows = []
+    for row in rows:
+        table_rows.append({
+            "object": "block",
+            "type": "table_row",
+            "table_row": {
+                "cells": [parse_inline(cell) for cell in row]
+            },
+        })
+
+    return {
+        "object": "block",
+        "type": "table",
+        "table": {
+            "table_width": col_count,
+            "has_column_header": True,
+            "has_row_header": False,
+            "children": table_rows,
+        },
+    }
 
 
 def _heading_block(heading_type, text):
